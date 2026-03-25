@@ -155,6 +155,32 @@ export class AuthService {
   }
 
   /**
+   * Processes a Google ID token obtained from the GIS renderButton callback.
+   * Stores the session and syncs the user profile with the backend.
+   *
+   * This is the preferred sign-in path: GIS renderButton opens a real OAuth
+   * popup that works without third-party cookies and without Firebase Auth's
+   * signInWithPopup, avoiding auth/configuration-not-found errors.
+   */
+  processGoogleCredential$(idToken: string): Observable<string> {
+    try {
+      const payload = JSON.parse(atob(idToken.split('.')[1]));
+      const expiry = payload.exp * 1000;
+
+      this.firebaseIdToken = idToken;
+      this.firebaseTokenExpiry = expiry;
+      localStorage.setItem(
+        FIREBASE_SESSION_KEY,
+        JSON.stringify({token: idToken, expiry} as FirebaseSession),
+      );
+
+      return this.syncUserWithBackend$(idToken).pipe(map(() => idToken));
+    } catch {
+      return throwError(() => new Error('Failed to parse Google credential.'));
+    }
+  }
+
+  /**
    * A test sign-in method to get a Google ID token compatible with Identity Platform.
    *
    * @returns An Observable that emits the Identity Platform-compatible ID token.

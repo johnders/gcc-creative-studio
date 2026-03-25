@@ -14,29 +14,41 @@
  * limitations under the License.
  */
 
-import {Component, NgZone, Inject, PLATFORM_ID} from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  Inject,
+  NgZone,
+  PLATFORM_ID,
+  ViewChild,
+} from '@angular/core';
 import {Router} from '@angular/router';
 import {AuthService} from './../common/services/auth.service';
 import {UserModel} from './../common/models/user.model';
 import {MatSnackBar} from '@angular/material/snack-bar';
-import { handleErrorSnackbar } from '../utils/handleMessageSnackbar';
+import {handleErrorSnackbar} from '../utils/handleMessageSnackbar';
 import {isPlatformBrowser} from '@angular/common';
+import {environment} from '../../environments/environment';
+
+// google.accounts is injected by the GIS script in index.html
+declare const google: any;
 
 const HOME_ROUTE = '/';
-
-interface LooseObject {
-  [key: string]: any;
-}
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
 })
-export class LoginComponent {
+export class LoginComponent implements AfterViewInit {
+  // Containers where the GIS Sign In With Google button will be rendered.
+  // Using renderButton opens a real OAuth popup — no third-party cookies,
+  // no FedCM/One Tap timeout, no Firebase Auth signInWithPopup dependency.
+  @ViewChild('mobileGisBtn') mobileGisBtn!: ElementRef<HTMLDivElement>;
+  @ViewChild('desktopGisBtn') desktopGisBtn!: ElementRef<HTMLDivElement>;
+
   loader = false;
-  invalidLogin = false;
-  errorMessage = '';
   isBrowser: boolean;
 
   constructor(
@@ -44,76 +56,71 @@ export class LoginComponent {
     private router: Router,
     public ngZone: NgZone,
     private _snackBar: MatSnackBar,
-    @Inject(PLATFORM_ID) platformId: Object
+    @Inject(PLATFORM_ID) platformId: Object,
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
   }
 
   ngOnInit(): void {}
 
-  loginWithGoogle() {
-    this.loader = true;
-    this.invalidLogin = false;
-    this.errorMessage = '';
+  ngAfterViewInit(): void {
+    if (!this.isBrowser || typeof google === 'undefined') return;
 
-    // Uses signInWithPopup which works reliably in modern browsers without
-    // third-party cookies. The One Tap / redirect flows are not used because
-    // they depend on third-party cookies that are increasingly blocked.
-    //
-    // IMPORTANT (Issue 4 — Authorized Domains): For this popup to succeed,
-    // the deployed domain (e.g. tidal-theater-491221-i7.web.app) must be
-    // listed in Firebase Console → Authentication → Settings → Authorized
-    // Domains. localhost is allowed by default for local development.
-    this.authService.signInWithGoogleFirebase().subscribe({
-      next: (_firebaseToken: string) => {
-        this.ngZone.run(() => {
-          this.loader = false;
-          void this.router.navigate([HOME_ROUTE]);
-        });
+    // Initialize GIS once. The callback fires when the user completes sign-in
+    // via the rendered button's popup.
+    google.accounts.id.initialize({
+      client_id: environment.GOOGLE_CLIENT_ID,
+      callback: (response: any) => {
+        // GIS callbacks run outside Angular's zone; wrap to trigger CD.
+        this.ngZone.run(() => this.handleGoogleCredential(response));
       },
-      error: (error: any) => {
+    });
+
+    const btnOptions = {
+      type: 'standard',
+      theme: 'filled_blue',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+    };
+
+    if (this.mobileGisBtn?.nativeElement) {
+      google.accounts.id.renderButton(this.mobileGisBtn.nativeElement, btnOptions);
+    }
+    if (this.desktopGisBtn?.nativeElement) {
+      google.accounts.id.renderButton(this.desktopGisBtn.nativeElement, btnOptions);
+    }
+  }
+
+  private handleGoogleCredential(response: any): void {
+    if (!response?.credential) {
+      this.handleLoginError({
+        message: 'Google Sign-In did not return a credential. Please try again.',
+      });
+      return;
+    }
+
+    this.loader = true;
+    this.authService.processGoogleCredential$(response.credential).subscribe({
+      next: () => {
         this.loader = false;
-        // auth/popup-closed-by-user and auth/cancelled-popup-request are
-        // non-error cases (user dismissed the popup) — show a gentle message.
-        if (
-          error?.code === 'auth/popup-closed-by-user' ||
-          error?.code === 'auth/cancelled-popup-request'
-        ) {
-          this.handleLoginError({
-            message: 'Sign-in was cancelled. Please try again.',
-          });
-        } else if (error?.code === 'auth/popup-blocked') {
-          this.handleLoginError({
-            message:
-              'Pop-up was blocked by the browser. Please allow pop-ups for this site and try again.',
-          });
-        } else {
-          this.handleLoginError(
-            error || {
-              message:
-                'An unexpected error occurred during sign-in. Please try again.',
-            },
-          );
-        }
-        console.error('Google Sign-In error:', error);
+        void this.router.navigate([HOME_ROUTE]);
+      },
+      error: (err: any) => {
+        this.handleLoginError(err);
       },
     });
   }
 
-  private handleLoginError(
-    error: any,
-    postErrorAction?: () => void,
-  ) {
+  private handleLoginError(error: any, postErrorAction?: () => void): void {
     this.loader = false;
     handleErrorSnackbar(this._snackBar, error, 'Login Error');
-    if (postErrorAction) {
-      postErrorAction();
-    }
+    if (postErrorAction) postErrorAction();
   }
 
-  redirect(user: UserModel) {
+  redirect(user: UserModel): void {
     if (this.isBrowser) {
-        localStorage.setItem('USER_DETAILS', JSON.stringify(user));
+      localStorage.setItem('USER_DETAILS', JSON.stringify(user));
     }
     this.loader = false;
     void this.router.navigate([HOME_ROUTE]);
