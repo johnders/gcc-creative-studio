@@ -177,6 +177,8 @@ export class AuthService {
     );
   }
 
+  private isGoogleIdentityInitialized = false;
+
   private promptForIdentityPlatformToken$(): Observable<string> {
     const GOOGLE_CLIENT_ID = environment.GOOGLE_CLIENT_ID;
 
@@ -197,27 +199,32 @@ export class AuthService {
         );
       }, 15000);
 
+      const handleCredentialResponse = (response: any) => {
+        clearTimeout(loginTimeout);
+        const idToken = response.credential;
+        if (idToken) {
+          observer.next(idToken);
+          observer.complete();
+        } else {
+          observer.error(
+            new Error(
+              'Google Sign-In response did not contain a credential.',
+            ),
+          );
+        }
+      };
+
       try {
-        google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: (response: any) => {
-            clearTimeout(loginTimeout);
-            const idToken = response.credential;
-            if (idToken) {
-              observer.next(idToken);
-              observer.complete();
-            } else {
-              observer.error(
-                new Error(
-                  'Google Sign-In response did not contain a credential.',
-                ),
-              );
-            }
-          },
-        });
+        if (!this.isGoogleIdentityInitialized) {
+          google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse,
+            use_fedcm_for_prompt: true,
+          });
+          this.isGoogleIdentityInitialized = true;
+        }
 
         // Trigger the One Tap prompt.
-        // Per new docs, we don't use the notification object for flow control.
         google.accounts.id.prompt();
       } catch (error) {
         clearTimeout(loginTimeout);
