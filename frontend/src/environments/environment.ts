@@ -22,7 +22,6 @@ export const environment = {
     storageBucket: '',
     messagingSenderId: '',
     appId: '',
-    measurementId: '',
   },
   production: true,
   isLocal: false,

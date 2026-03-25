@@ -22,7 +22,6 @@ export const environment = {
     storageBucket: 'FIREBASE_STORAGE_BUCKET_PLACEHOLDER',
     messagingSenderId: 'FIREBASE_SENDER_ID_PLACEHOLDER',
     appId: 'FIREBASE_APP_ID_PLACEHOLDER',
-    measurementId: 'FIREBASE_MEASUREMENT_ID_PLACEHOLDER',
   },
   production: true,
   isLocal: false,

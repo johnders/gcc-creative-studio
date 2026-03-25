@@ -15,7 +15,7 @@
  */
 
 import { importProvidersFrom, Injector, NgModule } from '@angular/core';
-import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
+import { getApp, getApps, initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { MatButtonModule } from '@angular/material/button';
@@ -43,13 +43,7 @@ import {
   provideHttpClient,
   withInterceptorsFromDi,
 } from '@angular/common/http';
-import { getAnalytics, provideAnalytics } from '@angular/fire/analytics';
 import { AngularFireModule } from '@angular/fire/compat';
-import {
-  AngularFireAnalyticsModule,
-  ScreenTrackingService,
-  UserTrackingService,
-} from '@angular/fire/compat/analytics';
 import { AngularFireAuthModule } from '@angular/fire/compat/auth';
 import { AngularFireDatabaseModule } from '@angular/fire/compat/database';
 import { AngularFirestoreModule } from '@angular/fire/compat/firestore';
@@ -184,23 +178,20 @@ import { UpscaleComponent } from './upscale/upscale.component';
   providers: [
     provideClientHydration(),
     provideHttpClient(withInterceptorsFromDi()),
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
+    // Guard against double initialization when both modular and compat Firebase
+    // modules are present in the same module (AngularFireModule also calls
+    // initializeApp internally).
+    provideFirebaseApp(() =>
+      getApps().length ? getApp() : initializeApp(environment.firebase),
+    ),
     provideAuth(() => getAuth()),
     provideFirestore(() => getFirestore()),
-    provideAnalytics(() => getAnalytics()),
     importProvidersFrom([
       AngularFireModule.initializeApp(environment.firebase),
       AngularFireAuthModule,
       AngularFirestoreModule,
       AngularFireDatabaseModule,
-      AngularFireAnalyticsModule,
     ]),
-    {
-      provide: ScreenTrackingService, // Automatically track screen views
-    },
-    {
-      provide: UserTrackingService, // Automatically track user interactions
-    },
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
   ],
   bootstrap: [AppComponent],

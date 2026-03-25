@@ -73,6 +73,12 @@ export class AuthService {
    * @returns An Observable that emits the Firebase-compatible ID token.
    */
   signInWithGoogleFirebase(): Observable<string> {
+    // NOTE (Authorized Domains): For signInWithPopup to succeed, the domain
+    // hosting this app must be listed under Firebase Console →
+    // Authentication → Settings → Authorized Domains.
+    // The production domain (e.g. tidal-theater-491221-i7.web.app) and any
+    // custom domains must be added there. Firebase allows localhost by default
+    // for local development so no additional config is required locally.
     return from(signInWithPopup(this.auth, this.provider)).pipe(
       // Step 1: Get the Firebase ID token from the successful sign-in.
       switchMap((userCredential: UserCredential) => {
@@ -273,7 +279,7 @@ export class AuthService {
             () =>
               new Error(
                 error?.error?.detail ||
-                  `Could not synchronize user profile with the server. ${error?.error?.detail}`,
+                  'Could not synchronize user profile with the server.',
               ),
           );
         }),
