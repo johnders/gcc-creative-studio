@@ -70,11 +70,15 @@ locals {
 
 
 # --- Cloud Build Repository Connection ---
+locals {
+  conn_region = var.github_conn_region != "" ? var.github_conn_region : var.gcp_region
+}
+
 resource "google_cloudbuildv2_repository" "source_repo" {
   provider          = google-beta
   name              = var.github_repo_name
-  location          = var.gcp_region
-  parent_connection = "projects/${var.gcp_project_id}/locations/${var.gcp_region}/connections/${var.github_conn_name}"
+  location          = local.conn_region
+  parent_connection = "projects/${var.gcp_project_id}/locations/${local.conn_region}/connections/${var.github_conn_name}"
   remote_uri        = "https://github.com/${var.github_repo_owner}/${var.github_repo_name}.git"
 }
 
@@ -106,6 +110,7 @@ module "backend_service" {
   service_name          = var.backend_service_name
   resource_prefix       = "cs-be"
   github_conn_name      = var.github_conn_name
+  github_conn_region    = local.conn_region
   github_repo_owner     = var.github_repo_owner
   github_repo_name      = var.github_repo_name
   github_branch_name    = var.github_branch_name
@@ -144,7 +149,8 @@ module "frontend_service" {
 
   source_repository_id = google_cloudbuildv2_repository.source_repo.id
   gcp_project_id       = var.gcp_project_id
-  gcp_region            = var.gcp_region
+  gcp_region           = var.gcp_region
+  github_conn_region   = local.conn_region
   firebase_project_id  = google_firebase_project.default.project
   service_name         = var.gcp_project_id
   environment          = var.environment

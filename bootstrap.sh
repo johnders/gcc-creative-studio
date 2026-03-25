@@ -152,7 +152,10 @@ start_sql_proxy() {
 
     # 2. Download Proxy (if missing)
     if [ ! -f "cloud-sql-proxy" ]; then
-        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.linux.amd64
+        local OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        local ARCH=$(uname -m)
+        if [ "$ARCH" = "arm64" ] || [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; else ARCH="amd64"; fi
+        curl -o cloud-sql-proxy "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.0/cloud-sql-proxy.${OS}.${ARCH}"
         chmod +x cloud-sql-proxy
     fi
 
@@ -583,7 +586,8 @@ setup_db_secrets() {
         # We use printf to avoid trailing newlines
         printf "%s" "$DB_PASSWORD" | gcloud secrets create "$SECRET_NAME" \
             --data-file=- \
-            --replication-policy="automatic" \
+            --replication-policy="user-managed" \
+            --locations="us-central1" \
             --project="$GCP_PROJECT_ID" \
             --quiet
 

@@ -39,6 +39,13 @@ resource "google_cloud_run_v2_service" "this" {
 
   template {
     service_account = google_service_account.run_sa.email
+    vpc_access {
+      network_interfaces {
+        network    = "default"
+        subnetwork = "default"
+      }
+      egress = "PRIVATE_RANGES_ONLY"
+    }
     volumes {
       name = "cloudsql"
       cloud_sql_instance {
@@ -127,7 +134,7 @@ resource "google_cloud_run_v2_service" "this" {
 
 resource "google_cloudbuild_trigger" "this" {
   name            = "${var.service_name}-trigger"
-  location        = var.gcp_region
+  location        = var.github_conn_region != "" ? var.github_conn_region : var.gcp_region
   service_account = google_service_account.trigger_sa.id
   filename        = var.cloudbuild_yaml_path
   substitutions   = merge(var.build_substitutions, {

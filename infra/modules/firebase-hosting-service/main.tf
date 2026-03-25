@@ -28,7 +28,7 @@ resource "google_service_account" "trigger_sa" {
 # 3. Create the build trigger
 resource "google_cloudbuild_trigger" "this" {
   name            = "${var.service_name}-trigger"
-  location        = var.gcp_region
+  location        = var.github_conn_region != "" ? var.github_conn_region : var.gcp_region
   service_account = google_service_account.trigger_sa.id
   filename        = var.cloudbuild_yaml_path
   substitutions   = var.build_substitutions

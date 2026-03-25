@@ -46,6 +46,11 @@ variable "fe_build_substitutions" {
 
 # Common GitHub variables
 variable "github_conn_name" { type = string }
+variable "github_conn_region" {
+  type        = string
+  description = "The GCP region where the Cloud Build GitHub connection was created."
+  default     = ""
+}
 variable "github_repo_owner" { type = string }
 variable "github_repo_name" { type = string }
 variable "github_branch_name" { type = string }

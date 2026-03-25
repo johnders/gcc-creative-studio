@@ -14,6 +14,10 @@
 
 variable "gcp_project_id" { type = string }
 variable "gcp_region" {type = string}
+variable "github_conn_region" {
+  type    = string
+  default = ""
+}
 variable "firebase_project_id" { type = string }
 variable "service_name" { type = string }
 variable "environment" { type = string }

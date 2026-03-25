@@ -42,6 +42,12 @@ variable "github_conn_name" {
   description = "The name of the Cloud Build GitHub connection."
 }
 
+variable "github_conn_region" {
+  type        = string
+  description = "The region where the Cloud Build GitHub connection lives."
+  default     = ""
+}
+
 variable "github_repo_owner" {
   type        = string
   description = "The owner of the GitHub repository."
